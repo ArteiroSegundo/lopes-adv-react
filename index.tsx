@@ -162,7 +162,6 @@ const Footer = () => (
 );
 
 // --- Pages ---
-
 const HomePage = () => {
   const [user, setUser] = useState<any>(null);
   const [testimonials, setTestimonials] = useState<any[]>([]);
@@ -171,12 +170,25 @@ const HomePage = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // 1. Verifica sessão atual
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    // 2. Escuta mudanças na autenticação (Login/Logout)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+
+      // NOVA LÓGICA: Se o evento for "LOGIN" (SIGNED_IN), rola até os depoimentos
+      if (event === 'SIGNED_IN') {
+        setTimeout(() => {
+          const element = document.getElementById('depoimentos');
+          if (element) {
+            // Rola suavemente e centraliza a seção na tela
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 800); // Aumentei um pouco o tempo para garantir que a tela carregou
+      }
     });
 
     fetchTestimonials();
@@ -199,10 +211,14 @@ const HomePage = () => {
   };
 
   const loginGoogle = async () => {
+    // Pega a URL base do site (ex: https://seu-site.vercel.app)
+    const baseUrl = window.location.origin;
+    
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + window.location.pathname + '#/'
+        // Redireciona para a raiz. O useEffect lá em cima cuidará da rolagem.
+        redirectTo: baseUrl 
       }
     });
   };
@@ -230,7 +246,7 @@ const HomePage = () => {
       setText('');
       setRating(5);
     } else {
-      alert('Erro ao enviar depoimento. Certifique-se de que a tabela no banco de dados foi criada.');
+      alert('Erro ao enviar depoimento. Verifique sua conexão.');
     }
   };
 
